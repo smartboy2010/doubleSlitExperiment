@@ -1,0 +1,102 @@
+from dash import Dash, dcc, html, Input, Output
+import plotly.graph_objects as go
+import numpy as np
+
+app = Dash(__name__)
+
+app.layout = html.Div([
+    html.H4('Double Slit Simulation Example'),
+    html.P("Select Slit Width:"),
+    dcc.Slider(.05, 1.5, .05,
+               value=0.05,
+               id='slit_width'
+               ),
+
+    html.P("Select Wavelength:"),
+    dcc.Slider(380, 780,
+               marks={
+                   405: {'label': '405', 'style': {'color': "#0000ff"}},
+                   532: {'label': '532', 'style': {'color': "#00ff00"}},
+                   650: {'label': '650', 'style': {'color': "#ff0000"}},
+                   380: {'label': '380'},
+                   400: {'label': '400'},
+                   420: {'label': '420'},
+                   440: {'label': '440'},
+                   460: {'label': '460'},
+                   480: {'label': '480'},
+                   500: {'label': '500'},
+                   520: {'label': '520'},
+                   540: {'label': '540'},
+                   560: {'label': '560'},
+                   580: {'label': '580'},
+                   600: {'label': '600'},
+                   620: {'label': '620'},
+                   640: {'label': '640'},
+                   660: {'label': '660'},
+                   680: {'label': '680'},
+                   700: {'label': '700'},
+                   720: {'label': '720'},
+                   740: {'label': '740'},
+                   760: {'label': '760'},
+                   780: {'label': '780'},
+               },
+               value=380,
+               id='wave_length'
+               ),
+    html.P("Select Distance to Wall:"),
+    dcc.Slider(1, 20, 1,
+               value=1,
+               id='wall_distance'
+               ),
+    dcc.Graph(id="graph"),
+])
+
+
+def intensity(x, d, D, wave_length):
+    return (2 * (1 + np.cos(np.pi * 2 / wave_length * d * x / D))) ** 0.5
+
+
+def plot_screen(d, D, wave_length, x_min, x_max):
+    x = np.linspace(x_min, x_max, 500)
+    y = np.linspace(0, 10)
+    z = intensity(x, d, D, wave_length)
+    color = λ2rgb(wave_length)
+
+    fig = go.Figure(data=go.Contour(
+        z=[z.tolist() for _ in range(10)], x=x, y=y,
+        showscale=False,
+        contours=dict(coloring='fill', showlines=False), colorscale=[[0, "black"], [1, color]]
+    ))
+    return fig
+
+
+@app.callback(
+    Output("graph", "figure"),
+    Input("slit_width", "value"),
+    Input("wave_length", "value"),
+    Input("wall_distance", "value"))
+def display_color(d, wave_length, D):
+    x_min, x_max = -50 * 1e-3, 50 * 1e-3  # mm
+
+    return plot_screen(d * 1e-3, D, wave_length * 1e-9, x_min, x_max)
+    # fig = go.Figure(
+    #     data=go.Bar(y=[2, 3, 1],  # replace with your own data source
+    #                 marker_color=color))
+    # return fig
+
+
+def λ2rgb(wave):
+    wave *= 10 ** 9
+    # calculate true rgb
+    red = (0 if wave < 380 else (440 - wave) / 60 if wave < 440 else 0 if wave < 510 else (wave - 510) / 70 if wave < 580 else 1 if wave <= 780 else 0)
+    green = (0 if wave < 440 else (wave - 440)/50 if wave < 490 else 1 if wave < 580 else (645 - wave) / 65 if wave < 645 else 0)
+    blue = (0 if wave < 380 else 1 if wave < 490 else (510 - wave) / 20 if wave < 510 else 0)
+
+    # reduce intensity at visible light edges
+    factor = (0 if wave < 380 else 0.3 + 0.7 * (wave - 380) / 40 if wave < 420 else 0.3+0.7 if wave < 700 else 0.3 + 0.7 * (780 - wave) / 80 if wave <= 780 else 0)
+    #red * factor, green * factor, blue * factor
+    return f'rgb({red * factor*255}, {green * factor*255}, {blue * factor*255})'
+
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
